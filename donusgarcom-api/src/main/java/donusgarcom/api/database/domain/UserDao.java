@@ -32,15 +32,4 @@ public class UserDao extends GenericDao<UserDao.User> {
         String pass;
         String role;
     }
-
-    public static class Roles {
-        Roles() { }
-
-        public static final String ADMIN = "admin";
-        public static final String USER = "user";
-        public static final String OWNER = "owner";
-        public static final String MANAGER = "manager";
-        public static final String STAFF = "staff";
-        public static final String CONSULTANT = "consultant";
-    }
 }

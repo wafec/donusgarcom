@@ -72,7 +72,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
         return null;
     }
 
-    public void put(int id, T data) {
+    public void update(int id, T data) {
         String sql = "UPDATE " + getTableName() + " SET ";
         String sqlSets = String.join(", ", Arrays.asList(getManagedFieldNames()).stream().map(sqlField -> {
             try {
@@ -108,7 +108,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
         sqlManager.enqueueExecuteUpdate(sql);
     }
 
-    public T post(T data) {
+    public T insert(T data) {
         int nextId = getNextId();
         data.id = nextId;
         List<SqlField> listOfSqlField = Arrays.asList(getManagedFieldNames());
