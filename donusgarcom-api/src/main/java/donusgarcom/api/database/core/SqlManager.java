@@ -56,10 +56,16 @@ public abstract class SqlManager {
 
     public void dequeueAndExecuteAll() {
         ArrayList<SqlList> listOfSqlList = SqlList.createListOfSqlList(sqlOperations);
+        ArrayList<SqlList> listOfNonExecutedSqlList = new ArrayList<>();
         for (int i = 0; i < listOfSqlList.size(); i++) {
             SqlList sqlList = listOfSqlList.get(i);
-            execute(sqlList);
+            if (!execute(sqlList)) {
+                listOfNonExecutedSqlList.add(sqlList);
+            }
         }
+        sqlOperations.clear();
+        log.warn(String.format("A list of % statements where not executed due to a db error",
+                listOfNonExecutedSqlList.stream().mapToInt(l -> l.sqlStatementOperations.size()).sum()));
     }
 
     public boolean execute(SqlList sqlList) {
@@ -87,6 +93,13 @@ public abstract class SqlManager {
         } catch (SQLException exception) {
             log.error(exception);
         } finally {
+            if (connection != null && sqlList.isAtomic) {
+                try {
+                    connection.rollback();
+                } catch (SQLException exception) {
+                    log.error(exception);
+                }
+            }
             if (connection != null || statement != null) {
                 try {
                     connection.close();

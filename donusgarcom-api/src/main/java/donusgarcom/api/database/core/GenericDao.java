@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,7 +14,7 @@ import java.util.stream.Collectors;
 public abstract class GenericDao <T extends GenericDao.GenericData> {
     static final Logger log = LogManager.getLogger(GenericDao.class);
 
-    protected abstract SqlField[] getManagedFieldNames();
+    protected abstract SqlField[] getManagedSqlFields();
     protected abstract String getTableName();
     protected abstract Class<T> getClazz();
 
@@ -39,6 +40,49 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
         return null;
     }
 
+    public List<T> select(String whereSql) {
+        String sql = String.format("SELECT * FROM % WHERE " + whereSql, getTableName());
+        ResultSet resultSet = sqlManager.executeQuery(sql);
+        if (resultSet != null) {
+            try {
+                ArrayList<T> res = new ArrayList<>();
+                while (resultSet.next()) {
+                    res.add(fromResultSet(resultSet));
+                }
+                return res;
+            } catch (SQLException exception) {
+                log.error(exception);
+            }
+        }
+        return null;
+    }
+
+    public int count(String whereSql) {
+        String sql = String.format("SELECT COUNT(*) as counting FROM % WHERE " + whereSql, getTableName());
+        ResultSet resultSet = sqlManager.executeQuery(sql);
+        if (resultSet != null) {
+            try {
+                if (resultSet.next()) {
+                    return resultSet.getInt("counting");
+                }
+            } catch (SQLException exception) {
+                log.error(exception);
+            }
+        }
+        log.warn("ResultSet returned null for counting registers.");
+        return 0;
+    }
+
+    public void doTransaction(Runnable runnable) {
+        sqlManager.enqueueBeginTransaction();
+        runnable.run();
+        sqlManager.dequeueAndExecuteAll();
+    }
+
+    public void commit() {
+        sqlManager.dequeueAndExecuteAll();
+    }
+
     T fromResultSet(ResultSet resultSet) {
         try {
             Class<T> clazz = getClazz();
@@ -47,7 +91,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
             Field idField = clazz.getField("id");
             idField.set(newInstance, resultSet.getInt("id"));
 
-            for (SqlField sqlField : getManagedFieldNames()) {
+            for (SqlField sqlField : getManagedSqlFields()) {
                 try {
                     Field anyField = clazz.getField(sqlField.name);
                     Object value = null;
@@ -74,7 +118,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
 
     public void update(int id, T data) {
         String sql = "UPDATE " + getTableName() + " SET ";
-        String sqlSets = String.join(", ", Arrays.asList(getManagedFieldNames()).stream().map(sqlField -> {
+        String sqlSets = String.join(", ", Arrays.asList(getManagedSqlFields()).stream().map(sqlField -> {
             try {
                 Class<T> clazz = getClazz();
                 Field anyField = clazz.getField(sqlField.name);
@@ -111,7 +155,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
     public T insert(T data) {
         int nextId = getNextId();
         data.id = nextId;
-        List<SqlField> listOfSqlField = Arrays.asList(getManagedFieldNames());
+        List<SqlField> listOfSqlField = Arrays.asList(getManagedSqlFields());
         listOfSqlField.add(new SqlField("id", SqlFieldType.INT));
         String sql = "INSERT INTO " + getTableName() + " (";
         String sqlFieldNames = String.join(", ", listOfSqlField.stream().map(sqlField -> {
@@ -169,6 +213,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
 
     public enum SqlFieldType {
         INT,
-        STRING
+        STRING,
+        DATE
     }
 }
