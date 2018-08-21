@@ -12,7 +12,7 @@ public class UserDao extends GenericDao<UserDao.User> {
 
     @Override
     protected String getTableName() {
-        return "api.user";
+        return "users";
     }
 
     @Override
@@ -25,11 +25,16 @@ public class UserDao extends GenericDao<UserDao.User> {
     }
 
     public boolean authenticate(String name, String pass) {
-        return count(String.format("name = '%' AND pass = '%'", name, pass)) > 0;
+        return count("name = ? AND pass = ?", new SqlValue[] {
+                new SqlValue(name, SqlFieldType.STRING),
+                new SqlValue(pass, SqlFieldType.STRING)
+        }) > 0;
     }
 
     public UserDao.User getByName(String name) {
-        List<UserDao.User> list = select(String.format("name = '%'", name));
+        List<UserDao.User> list = select("name = ?", new SqlValue[] {
+                new SqlValue(name, SqlFieldType.STRING)
+        });
         if (list.size() > 0) {
             return list.get(0);
         }
@@ -42,8 +47,8 @@ public class UserDao extends GenericDao<UserDao.User> {
     }
 
     public static class User extends GenericDao.GenericData {
-        String name;
-        String pass;
-        String role;
+        public String name;
+        public String pass;
+        public String role;
     }
 }

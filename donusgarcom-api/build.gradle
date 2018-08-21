@@ -15,4 +15,6 @@ dependencies {
     compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-servlet', version: '2.27'
     compile group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'
     compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-grizzly2-http', version: '2.27'
+    compile group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '2.27'
+    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-moxy', version: '2.27'
 }

@@ -3,35 +3,78 @@ package donusgarcom.api.database.core;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
 public abstract class SqlManager {
     static final Logger log = LogManager.getLogger(SqlManager.class);
 
     ArrayList<GenericSqlOperation> sqlOperations = new ArrayList<>();
+    String driver;
+    String url;
+    String user;
+    String password;
 
-    protected abstract Connection getConnection();
+    public SqlManager(String driver, String url, String user, String password) {
+        this.driver = driver;
+        this.url = url;
+        this.user = user;
+        this.password = password;
+    }
 
-    public ResultSet executeQuery(String sql) {
+    protected Connection getConnection() {
+        try {
+            Class.forName(driver);
+            return DriverManager.getConnection(url, user, password);
+        } catch (SQLException exception) {
+            log.error(exception);
+        } catch (ClassNotFoundException exception) {
+            log.error(exception);
+        }
+        return null;
+    }
+
+    void setValuesOnPreparedStatement(PreparedStatement preparedStatement, GenericDao.SqlValue[] sqlValues) {
+        for (int i = 0; i < sqlValues.length; i++) {
+            try {
+                GenericDao.SqlValue sqlValue = sqlValues[i];
+                switch (sqlValue.fieldType) {
+                    case INT:
+                        preparedStatement.setInt(i + 1, (Integer) sqlValue.value);
+                        break;
+                    case STRING:
+                        preparedStatement.setString(i + 1, (String) sqlValue.value);
+                        break;
+                    case DATE:
+                        Timestamp timestamp = Timestamp.valueOf((LocalDateTime) sqlValue.value);
+                        preparedStatement.setTimestamp(i + 1, timestamp);
+                        break;
+                }
+            } catch (SQLException exception) {
+                log.error(exception);
+            }
+        }
+    }
+
+    public void executeQuery(String sql, GenericDao.SqlValue[] sqlValues, Consumer<ResultSet> consumer) {
         Connection connection = null;
-        Statement statement = null;
+        PreparedStatement statement = null;
         try {
             connection = getConnection();
-            statement = connection.createStatement();
+            statement = connection.prepareStatement(sql);
+            setValuesOnPreparedStatement(statement, sqlValues);
             log.debug("Executing SQL: " + sql);
-            ResultSet res = statement.executeQuery(sql);
+            ResultSet resultSet = statement.executeQuery();
+            consumer.accept(resultSet);
             connection.close();
             connection = null;
             statement = null;
-            return res;
         } catch (SQLException exception) {
             log.error(exception);
         } finally {
-            if (connection == null || statement == null) {
+            if (connection != null || statement != null) {
                 try {
                     connection.close();
                 } catch (SQLException exception) {
@@ -39,11 +82,10 @@ public abstract class SqlManager {
                 }
             }
         }
-        return null;
     }
 
-    public void enqueueExecuteUpdate(String sql) {
-        sqlOperations.add(new SqlStatementOperation(SqlOperationType.EXECUTE_UPDATE, sql));
+    public void enqueueExecuteUpdate(String sql, GenericDao.SqlValue[] sqlValues) {
+        sqlOperations.add(new SqlStatementOperation(SqlOperationType.EXECUTE_UPDATE, sql, sqlValues));
     }
 
     public void enqueueBeginTransaction() {
@@ -64,23 +106,25 @@ public abstract class SqlManager {
             }
         }
         sqlOperations.clear();
-        log.warn(String.format("A list of % statements where not executed due to a db error",
-                listOfNonExecutedSqlList.stream().mapToInt(l -> l.sqlStatementOperations.size()).sum()));
+        int notExecuted = listOfNonExecutedSqlList.stream().mapToInt(l -> l.sqlStatementOperations.size()).sum();
+        if (notExecuted > 0)
+            log.warn(String.format("A list of %d statements where not executed due to a db error", notExecuted));
     }
 
     public boolean execute(SqlList sqlList) {
         Connection connection = null;
-        Statement statement = null;
+        PreparedStatement statement = null;
         try {
             connection = getConnection();
             connection.setAutoCommit(!sqlList.isAtomic);
-            statement = connection.createStatement();
             for (int i = 0; i < sqlList.sqlStatementOperations.size(); i++) {
                 SqlStatementOperation statementOperation = sqlList.sqlStatementOperations.get(i);
+                statement = connection.prepareStatement(statementOperation.statement);
+                setValuesOnPreparedStatement(statement, statementOperation.sqlValues);
                 switch (statementOperation.operation) {
                     case EXECUTE_UPDATE:
                         log.debug("Executing update: " + statementOperation.statement);
-                        statement.executeUpdate(statementOperation.statement);
+                        statement.executeUpdate();
                         break;
                 }
             }
@@ -130,11 +174,11 @@ public abstract class SqlManager {
                 switch (operation.operation) {
                     case BEGIN_TRANSACTION:
                         listOfSqlList.add(new SqlList(false, statementOperations));
-                        statementOperations.clear();
+                        statementOperations = new ArrayList<>();
                         break;
                     case END_TRANSACTION:
                         listOfSqlList.add(new SqlList(true, statementOperations));
-                        statementOperations.clear();
+                        statementOperations = new ArrayList<>();
                         break;
                     case EXECUTE_UPDATE:
                         statementOperations.add((SqlStatementOperation) operation);
@@ -143,7 +187,6 @@ public abstract class SqlManager {
             }
             if (statementOperations.size() > 0) {
                 listOfSqlList.add(new SqlList(false, statementOperations));
-                statementOperations.clear();
             }
             return listOfSqlList;
         }
@@ -159,10 +202,12 @@ public abstract class SqlManager {
 
     static class SqlStatementOperation extends GenericSqlOperation {
         public String statement;
+        public GenericDao.SqlValue[] sqlValues;
 
-        public SqlStatementOperation(SqlOperationType operation, String statement) {
+        public SqlStatementOperation(SqlOperationType operation, String statement, GenericDao.SqlValue[] sqlValues) {
             super(operation);
             this.statement = statement;
+            this.sqlValues = sqlValues;
         }
     }
 

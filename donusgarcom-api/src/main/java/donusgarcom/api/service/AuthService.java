@@ -8,18 +8,19 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.inject.Inject;
+import javax.xml.bind.annotation.XmlRootElement;
+import java.time.LocalDateTime;
 import java.util.Calendar;
 import java.util.Date;
 
 public class AuthService {
-    static Logger log = LogManager.getLogger(AuthService.class);
-    static String secretKey = "orangeJuiceIsSoGood";
+    static final Logger log = LogManager.getLogger(AuthService.class);
+    static final String secretKey = "orangeJuiceIsSoGood";
+    static final int tokenDurationInHours = 6;
 
     UserDao userDao;
     AuthDao authDao;
 
-    @Inject
     public AuthService(UserDao userDao, AuthDao authDao) {
         this.userDao = userDao;
         this.authDao = authDao;
@@ -35,9 +36,11 @@ public class AuthService {
     }
 
     String createToken(AuthUser authUser) {
+        String subject = authUser.username;
+        subject += new Date().toString();
         return Jwts.builder()
-                .setSubject(authUser.username)
-                .signWith(SignatureAlgorithm.HS512, secretKey)
+                .setSubject(subject)
+                .signWith(SignatureAlgorithm.HS256, secretKey)
                 .compact();
     }
 
@@ -48,14 +51,12 @@ public class AuthService {
     void saveTokenToDatabase(AuthUser authUser, AuthToken authToken) {
         UserDao.User user = userDao.getByName(authUser.username);
         if (user != null) {
-            Calendar calendarInstance = Calendar.getInstance();
-            calendarInstance.setTime(new Date());
-            calendarInstance.add(Calendar.HOUR_OF_DAY, 5);
+            LocalDateTime current = LocalDateTime.now();
             AuthDao.Auth auth = new AuthDao.Auth(
-                    user.getId(),
+                    user.id,
                     authToken.token,
-                    new Date(),
-                    calendarInstance.getTime()
+                    current,
+                    current.plusHours(tokenDurationInHours)
             );
             removeExistentTokenFromDatabase(user);
             authDao.insert(auth);
@@ -66,20 +67,26 @@ public class AuthService {
     }
 
     void removeExistentTokenFromDatabase(UserDao.User user) {
-        AuthDao.Auth auth = authDao.getByUserId(user.getId());
+        AuthDao.Auth auth = authDao.getByUserId(user.id);
         if (auth != null) {
-            authDao.delete(auth.getId());
+            authDao.delete(auth.id);
             authDao.commit();
         }
     }
 
+    @XmlRootElement
     public static class AuthUser {
         public String username;
         public String password;
+
+        public AuthUser() { }
     }
 
+    @XmlRootElement
     public static class AuthToken {
         public String token;
+
+        public AuthToken() { }
 
         public AuthToken(String token) {
             this.token = token;
