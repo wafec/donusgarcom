@@ -1,13 +1,14 @@
 package donusgarcom.api.database.domain;
 
-import donusgarcom.api.database.core.GenericDao;
-import donusgarcom.api.database.core.SqlManager;
+import donusgarcom.api.database.util.DbManager;
 
+import javax.inject.Inject;
 import java.util.List;
 
 public class UserDao extends GenericDao<UserDao.User> {
-    public UserDao(SqlManager sqlManager) {
-        super(sqlManager);
+    @Inject
+    public UserDao(DbManager dbManager) {
+        super(dbManager);
     }
 
     @Override

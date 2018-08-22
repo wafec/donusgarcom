@@ -1,5 +1,6 @@
-package donusgarcom.api.database.core;
+package donusgarcom.api.database.domain;
 
+import donusgarcom.api.database.util.DbManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,16 +18,16 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
     protected abstract String getTableName();
     protected abstract Class<T> getClazz();
 
-    SqlManager sqlManager;
+    DbManager dbManager;
 
-    public GenericDao(SqlManager sqlManager) {
-        this.sqlManager = sqlManager;
+    public GenericDao(DbManager dbManager) {
+        this.dbManager = dbManager;
     }
 
     public T get(int id) {
         Object[] data = { null };
         String sql = String.format("SELECT * FROM %s WHERE id = ?", getTableName());
-        sqlManager.executeQuery(sql, new SqlValue[] { new SqlValue(id, SqlFieldType.INT) }, resultSet -> {
+        dbManager.executeQuery(sql, new SqlValue[] { new SqlValue(id, SqlFieldType.INT) }, resultSet -> {
             if (resultSet != null) {
                 try {
                     if (resultSet.next()) {
@@ -44,7 +45,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
     public List<T> select(String whereSql, SqlValue[] sqlValues) {
         String sql = String.format("SELECT * FROM %s WHERE " + whereSql, getTableName());
         ArrayList<T> res = new ArrayList<>();
-        sqlManager.executeQuery(sql, sqlValues, resultSet -> {
+        dbManager.executeQuery(sql, sqlValues, resultSet -> {
             if (resultSet != null) {
                 try {
 
@@ -62,7 +63,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
     public int count(String whereSql, SqlValue[] sqlValues) {
         String sql = String.format("SELECT COUNT(*) as counting FROM %s WHERE " + whereSql, getTableName());
         final int[] res = { 0 };
-        sqlManager.executeQuery(sql, sqlValues, resultSet -> {
+        dbManager.executeQuery(sql, sqlValues, resultSet -> {
             if (resultSet != null) {
                 try {
                     if (resultSet.next()) {
@@ -77,13 +78,13 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
     }
 
     public void doTransaction(Runnable runnable) {
-        sqlManager.enqueueBeginTransaction();
+        dbManager.enqueueBeginTransaction();
         runnable.run();
-        sqlManager.dequeueAndExecuteAll();
+        dbManager.dequeueAndExecuteAll();
     }
 
     public void commit() {
-        sqlManager.dequeueAndExecuteAll();
+        dbManager.dequeueAndExecuteAll();
     }
 
     T fromResultSet(ResultSet resultSet) {
@@ -143,12 +144,12 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
         }).filter(s -> s != null).collect(Collectors.toList()));
         sql = sql + sqlSets + " WHERE id = ?";
         listOfSqlValues.add(new SqlValue(id, SqlFieldType.INT));
-        sqlManager.enqueueExecuteUpdate(sql, listOfSqlValues.toArray(new SqlValue[listOfSqlValues.size()]));
+        dbManager.enqueueExecuteUpdate(sql, listOfSqlValues.toArray(new SqlValue[listOfSqlValues.size()]));
     }
 
     public void delete(int id) {
         String sql = String.format("DELETE FROM %s WHERE id = ?", getTableName());
-        sqlManager.enqueueExecuteUpdate(sql, new SqlValue[] { new SqlValue(id, SqlFieldType.INT) });
+        dbManager.enqueueExecuteUpdate(sql, new SqlValue[] { new SqlValue(id, SqlFieldType.INT) });
     }
 
     public T insert(T data) {
@@ -178,7 +179,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
             return null;
         }).filter(s -> s != null).collect(Collectors.toList()));
         sql = sql + sqlValues + ")";
-        sqlManager.enqueueExecuteUpdate(sql, listOfSqlValues.toArray(new SqlValue[listOfSqlField.size()]));
+        dbManager.enqueueExecuteUpdate(sql, listOfSqlValues.toArray(new SqlValue[listOfSqlField.size()]));
         return data;
     }
 
@@ -197,7 +198,7 @@ public abstract class GenericDao <T extends GenericDao.GenericData> {
                 }
             }
         };
-        sqlManager.executeQuery("SELECT MAX(id) FROM " + getTableName(), new SqlValue[] {}, consumer);
+        dbManager.executeQuery("SELECT MAX(id) FROM " + getTableName(), new SqlValue[] {}, consumer);
 
         return res[0];
     }

@@ -1,15 +1,21 @@
-package donusgarcom.api.database.core;
+package donusgarcom.api.database.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import donusgarcom.api.database.domain.GenericDao;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
-public abstract class SqlManager {
-    static final Logger log = LogManager.getLogger(SqlManager.class);
+public class DbManager {
+    static final Logger log = LogManager.getLogger(DbManager.class);
 
     ArrayList<GenericSqlOperation> sqlOperations = new ArrayList<>();
     String driver;
@@ -17,7 +23,15 @@ public abstract class SqlManager {
     String user;
     String password;
 
-    public SqlManager(String driver, String url, String user, String password) {
+    protected DbManager() {
+
+    }
+
+    public DbManager(String driver, String url, String user, String password) {
+        setConnectionParameters(driver, url, user, password);
+    }
+
+    protected final void setConnectionParameters(String driver, String url, String user, String password) {
         this.driver = driver;
         this.url = url;
         this.user = user;
@@ -153,6 +167,24 @@ public abstract class SqlManager {
             }
         }
         return false;
+    }
+
+    protected DbConfig getDbConfigFromStream(InputStream inputStream) {
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        try {
+            DbConfig dbConfig = mapper.readValue(inputStream, DbConfig.class);
+            return dbConfig;
+        } catch (IOException exception) {
+            log.error(exception);
+        }
+        return null;
+    }
+
+    protected static class DbConfig {
+        public String driver;
+        public String url;
+        public String user;
+        public String password;
     }
 
     static class SqlList {

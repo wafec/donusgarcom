@@ -18,18 +18,8 @@ import java.util.Map;
 public class App {
     static final Logger log = LogManager.getLogger(App.class);
 
-    public static ContextResolver<MoxyJsonConfig> createMoxyJsonResolver() {
-        final MoxyJsonConfig moxyJsonConfig = new MoxyJsonConfig();
-        Map<String, String> namespacePrefixMapper = new HashMap<>(1);
-        namespacePrefixMapper.put("http://www.w3.org/2001/XMLSchema-instance", "xsi");
-        moxyJsonConfig.setNamespacePrefixMapper(namespacePrefixMapper).setNamespaceSeparator(':');
-        return moxyJsonConfig.resolver();
-    }
-
     public static void main(String[] args) {
-        ResourceConfig rc = new ResourceConfig();
-        rc.registerClasses(AuthResource.class);
-        rc.register(createMoxyJsonResolver());
+        ResourceConfig rc = new ApiResourceConfig();
         URI uri = getBaseURI();
         final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(
                 uri,

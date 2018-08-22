@@ -2,15 +2,14 @@ package donusgarcom.api.service;
 
 import donusgarcom.api.database.domain.AuthDao;
 import donusgarcom.api.database.domain.UserDao;
-import donusgarcom.api.service.exception.AuthenticationFailException;
+import donusgarcom.api.common.exceptions.AuthErrorException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.xml.bind.annotation.XmlRootElement;
+import javax.inject.Inject;
 import java.time.LocalDateTime;
-import java.util.Calendar;
 import java.util.Date;
 
 public class AuthService {
@@ -21,6 +20,7 @@ public class AuthService {
     UserDao userDao;
     AuthDao authDao;
 
+    @Inject
     public AuthService(UserDao userDao, AuthDao authDao) {
         this.userDao = userDao;
         this.authDao = authDao;
@@ -32,7 +32,7 @@ public class AuthService {
             saveTokenToDatabase(authUser, authToken);
             return authToken;
         }
-        throw new AuthenticationFailException();
+        throw new AuthErrorException();
     }
 
     String createToken(AuthUser authUser) {
@@ -74,7 +74,6 @@ public class AuthService {
         }
     }
 
-    @XmlRootElement
     public static class AuthUser {
         public String username;
         public String password;
@@ -82,7 +81,6 @@ public class AuthService {
         public AuthUser() { }
     }
 
-    @XmlRootElement
     public static class AuthToken {
         public String token;
 

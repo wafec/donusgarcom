@@ -1,15 +1,15 @@
 package donusgarcom.api.database.domain;
 
-import donusgarcom.api.database.core.GenericDao;
-import donusgarcom.api.database.core.SqlManager;
+import donusgarcom.api.database.util.DbManager;
 
+import javax.inject.Inject;
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 
 public class AuthDao extends GenericDao<AuthDao.Auth> {
-    public AuthDao(SqlManager sqlManager) {
-        super(sqlManager);
+    @Inject
+    public AuthDao(DbManager dbManager) {
+        super(dbManager);
     }
 
     @Override
