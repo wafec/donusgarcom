@@ -1,7 +1,7 @@
 package donusgarcom.api.service;
 
-import donusgarcom.api.database.domain.AuthDao;
-import donusgarcom.api.database.domain.UserDao;
+import donusgarcom.api.database.domain.identity.AuthDao;
+import donusgarcom.api.database.domain.identity.UserDao;
 import donusgarcom.api.common.exceptions.AuthErrorException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -12,7 +12,7 @@ import javax.inject.Inject;
 import java.time.LocalDateTime;
 import java.util.Date;
 
-public class AuthService {
+public class AuthService extends GenericService {
     static final Logger log = LogManager.getLogger(AuthService.class);
     static final String secretKey = "orangeJuiceIsSoGood";
     static final int tokenDurationInHours = 6;

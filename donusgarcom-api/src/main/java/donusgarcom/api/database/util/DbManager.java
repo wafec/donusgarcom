@@ -79,7 +79,7 @@ public class DbManager {
             connection = getConnection();
             statement = connection.prepareStatement(sql);
             setValuesOnPreparedStatement(statement, sqlValues);
-            log.debug("Executing SQL: " + sql);
+            log.trace("Executing SQL: " + sql);
             ResultSet resultSet = statement.executeQuery();
             consumer.accept(resultSet);
             connection.close();
@@ -137,7 +137,7 @@ public class DbManager {
                 setValuesOnPreparedStatement(statement, statementOperation.sqlValues);
                 switch (statementOperation.operation) {
                     case EXECUTE_UPDATE:
-                        log.debug("Executing update: " + statementOperation.statement);
+                        log.trace("Executing update: " + statementOperation.statement);
                         statement.executeUpdate();
                         break;
                 }

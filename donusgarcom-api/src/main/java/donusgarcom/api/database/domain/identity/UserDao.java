@@ -1,5 +1,6 @@
-package donusgarcom.api.database.domain;
+package donusgarcom.api.database.domain.identity;
 
+import donusgarcom.api.database.domain.GenericDao;
 import donusgarcom.api.database.util.DbManager;
 
 import javax.inject.Inject;
@@ -51,5 +52,29 @@ public class UserDao extends GenericDao<UserDao.User> {
         public String name;
         public String pass;
         public String role;
+
+        public String getName() {
+            return name;
+        }
+
+        public String getPass() {
+            return pass;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setPass(String pass) {
+            this.pass = pass;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
     }
 }

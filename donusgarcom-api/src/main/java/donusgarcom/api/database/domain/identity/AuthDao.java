@@ -1,5 +1,6 @@
-package donusgarcom.api.database.domain;
+package donusgarcom.api.database.domain.identity;
 
+import donusgarcom.api.database.domain.GenericDao;
 import donusgarcom.api.database.util.DbManager;
 
 import javax.inject.Inject;
