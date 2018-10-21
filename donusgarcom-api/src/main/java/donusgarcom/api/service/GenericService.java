@@ -62,6 +62,27 @@ public abstract class GenericService {
         }
     }
 
+    public static class NewGeoLocalization {
+        public double latitude;
+        public double longitude;
+
+        public void setLatitude(double latitude) {
+            this.latitude = latitude;
+        }
+
+        public void setLongitude(double longitude) {
+            this.longitude = longitude;
+        }
+
+        public double getLatitude() {
+            return this.latitude;
+        }
+
+        public double getLongitude() {
+            return this.longitude;
+        }
+    }
+
     public static class GenericView {
         public int id;
 

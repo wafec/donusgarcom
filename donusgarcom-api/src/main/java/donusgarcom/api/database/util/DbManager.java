@@ -23,12 +23,23 @@ public class DbManager {
     String user;
     String password;
 
+    boolean disposable = false;
+    Connection connection;
+
     protected DbManager() {
 
     }
 
     public DbManager(String driver, String url, String user, String password) {
         setConnectionParameters(driver, url, user, password);
+    }
+
+    public DbManager(DbConfig dbConfig) {
+        this(dbConfig.driver, dbConfig.url, dbConfig.user, dbConfig.password);
+    }
+
+    public void setDisposable(boolean disposable) {
+        this.disposable = disposable;
     }
 
     protected final void setConnectionParameters(String driver, String url, String user, String password) {
@@ -39,15 +50,17 @@ public class DbManager {
     }
 
     protected Connection getConnection() {
+        if (disposable && connection != null)
+            return connection;
         try {
             Class.forName(driver);
-            return DriverManager.getConnection(url, user, password);
+            connection = DriverManager.getConnection(url, user, password);
         } catch (SQLException exception) {
             log.error(exception);
         } catch (ClassNotFoundException exception) {
             log.error(exception);
         }
-        return null;
+        return connection;
     }
 
     void setValuesOnPreparedStatement(PreparedStatement preparedStatement, GenericDao.SqlValue[] sqlValues) {
@@ -65,6 +78,11 @@ public class DbManager {
                         Timestamp timestamp = Timestamp.valueOf((LocalDateTime) sqlValue.value);
                         preparedStatement.setTimestamp(i + 1, timestamp);
                         break;
+                    case DOUBLE:
+                        preparedStatement.setDouble(i + 1, (Double) sqlValue.value);
+                        break;
+                    case BOOLEAN:
+                        preparedStatement.setBoolean(i + 1, (Boolean) sqlValue.value);
                 }
             } catch (SQLException exception) {
                 log.error(exception);
@@ -82,13 +100,15 @@ public class DbManager {
             log.trace("Executing SQL: " + sql);
             ResultSet resultSet = statement.executeQuery();
             consumer.accept(resultSet);
-            connection.close();
-            connection = null;
-            statement = null;
+            if (!disposable) {
+                connection.close();
+                connection = null;
+                statement = null;
+            }
         } catch (SQLException exception) {
             log.error(exception);
         } finally {
-            if (connection != null || statement != null) {
+            if (!disposable && (connection != null || statement != null)) {
                 try {
                     connection.close();
                 } catch (SQLException exception) {
@@ -144,21 +164,23 @@ public class DbManager {
             }
             if (sqlList.isAtomic)
                 connection.commit();
-            connection.close();
-            connection = null;
-            statement = null;
+            if (!disposable) {
+                connection.close();
+                connection = null;
+                statement = null;
+            }
             return true;
         } catch (SQLException exception) {
             log.error(exception);
         } finally {
-            if (connection != null && sqlList.isAtomic) {
+            if (!disposable && (connection != null && sqlList.isAtomic)) {
                 try {
                     connection.rollback();
                 } catch (SQLException exception) {
                     log.error(exception);
                 }
             }
-            if (connection != null || statement != null) {
+            if (!disposable && (connection != null || statement != null)) {
                 try {
                     connection.close();
                 } catch (SQLException exception) {
@@ -169,22 +191,54 @@ public class DbManager {
         return false;
     }
 
-    protected DbConfig getDbConfigFromStream(InputStream inputStream) {
-        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-        try {
-            DbConfig dbConfig = mapper.readValue(inputStream, DbConfig.class);
-            return dbConfig;
-        } catch (IOException exception) {
-            log.error(exception);
+    public void dispose() {
+        if (disposable) {
+            try {
+                if (connection != null) {
+                    connection.close();
+                }
+            } catch (SQLException exception) {
+                log.error(exception);
+            }
         }
-        return null;
     }
 
-    protected static class DbConfig {
+    public static class DbConfig {
         public String driver;
         public String url;
         public String user;
         public String password;
+
+        public DbConfig(String driver, String url, String user, String password) {
+            this.driver = driver;
+            this.url = url;
+            this.user = user;
+            this.password = password;
+        }
+
+        public DbConfig(DbConfig dbConfig) {
+            this(
+                    dbConfig.driver,
+                    dbConfig.url,
+                    dbConfig.user,
+                    dbConfig.password
+            );
+        }
+
+        public DbConfig(InputStream inputStream) {
+            this(getDbConfigFromStream(inputStream));
+        }
+
+        static final DbConfig getDbConfigFromStream(InputStream inputStream) {
+            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+            try {
+                DbConfig dbConfig = mapper.readValue(inputStream, DbConfig.class);
+                return dbConfig;
+            } catch (IOException exception) {
+                log.error(exception);
+            }
+            return null;
+        }
     }
 
     static class SqlList {

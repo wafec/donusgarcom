@@ -165,6 +165,12 @@ public abstract class GenericDao <T extends GenericDao.GenericData> extends Core
                         case DATE:
                             value = resultSet.getTimestamp(sqlField.getQualifiedName()).toLocalDateTime();
                             break;
+                        case DOUBLE:
+                            value = resultSet.getDouble(sqlField.getQualifiedName());
+                            break;
+                        case BOOLEAN:
+                            value = resultSet.getBoolean(sqlField.getQualifiedName());
+                            break;
                     }
                     // anyField.set(newInstance, value);
                     anyField.set(getInstance(sqlField, newInstance, true), value);

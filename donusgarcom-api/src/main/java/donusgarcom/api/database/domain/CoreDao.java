@@ -26,7 +26,9 @@ public abstract class CoreDao {
     public enum SqlFieldType {
         INT,
         STRING,
-        DATE
+        DATE,
+        DOUBLE,
+        BOOLEAN
     }
 
     public static class CoreData {

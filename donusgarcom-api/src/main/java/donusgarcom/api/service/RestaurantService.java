@@ -43,6 +43,7 @@ public class RestaurantService extends GenericService {
     public static class NewRestaurant {
         public String name;
         public NewAddress address;
+        public NewGeoLocalization geoLocalization;
 
         public String getName() {
             return name;
@@ -58,6 +59,14 @@ public class RestaurantService extends GenericService {
 
         public void setAddress(NewAddress address) {
             this.address = address;
+        }
+
+        public NewGeoLocalization getGeoLocalization() {
+            return geoLocalization;
+        }
+
+        public void setGeoLocalization(NewGeoLocalization geoLocalization) {
+            this.geoLocalization = geoLocalization;
         }
     }
 
